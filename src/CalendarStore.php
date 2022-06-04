@@ -35,10 +35,48 @@ class CalendarStore
 
                 $event['date'] = $carbon;
                 $event['withinWeek'] = $event['date']->diffInDays() < 7;
-                $event['presentableDate'] = $this->getPresentableDate($carbon);
+
+                $event['formattedDate'] = config('dashboard.tiles.calendar.presentable_dates', true)
+                    ? $this->getPresentableDate($carbon)
+                    : $this->getFormattedDate($event);
 
                 return $event;
             });
+    }
+
+    public function eventsForCalendarIds(array $calendarIds): Collection
+    {
+        return collect($calendarIds)->flatMap(fn ($id) => $this->eventsForCalendarId($id))->sortBy('date');
+    }
+
+    public function getFormattedDate($event): string
+    {
+        $timeOptions = ['a', 'A', 'B', 'g', 'G', 'h', 'H', 'i', 's', 'u', 'v', '@', ':'];
+        $dateTimeFormat = config('dashboard.tiles.calendar.date_format') ?? 'd.m.Y H:i';
+        $dateFormat = trim(str_replace($timeOptions, '', $dateTimeFormat));
+
+        $sortDate = Carbon::createFromTimeString($event['date']);
+        $start = Carbon::createFromTimeString($event['start']);
+        $end = Carbon::createFromTimeString($event['end']);
+
+        if ($sortDate->isToday() && $event['allDay']) {
+            return 'Today';
+        }
+
+        if ($start->diffInDays($end) > 1 && $event['allDay']) {
+            return $start->format($dateFormat) . ' - ' . $end->format($dateFormat);
+        }
+
+        if ($event['allDay']) {
+            return $sortDate->format($dateFormat);
+        }
+
+        if ($sortDate->diffInDays() < 7 && $event['start'] !== $event['end']) {
+            $duration = $start->diffInMinutes($end) > 90 ? $start->diffInHours($end).'hr' : $start->diffInMinutes($end). 'min';
+            return $sortDate->format($dateTimeFormat) . ' (' . $duration . ')' ;
+        }
+
+        return $sortDate->format($dateTimeFormat);
     }
 
     public function getPresentableDate(Carbon $carbon): string

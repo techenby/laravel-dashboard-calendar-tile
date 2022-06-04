@@ -21,10 +21,15 @@ class FetchCalendarEventsCommand extends Command
             $events = collect(Event::get(null, null, [], $calendarId))
                 ->map(function (Event $event) {
                     $sortDate = $event->getSortDate();
+                    $start = $event->start->dateTime ?? $event->start->date;
+                    $end = $event->end->dateTime ?? $event->end->date;
 
                     return [
                         'name' => $event->name,
+                        'allDay' => $event->isAllDayEvent(),
                         'date' => Carbon::createFromFormat('Y-m-d H:i:s', $sortDate)->format(DateTime::ATOM),
+                        'start' => Carbon::parse($start)->format(DateTime::ATOM),
+                        'end' => Carbon::parse($end)->format(DateTime::ATOM),
                     ];
                 })
                 ->unique('name')
