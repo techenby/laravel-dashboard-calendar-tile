@@ -19,6 +19,8 @@ class FetchCalendarEventsCommand extends Command
 
         foreach (config('dashboard.tiles.calendar.ids') ?? [] as $calendarId) {
             $events = collect(Event::get(null, null, [], $calendarId))
+                ->filter(fn ($event) =>
+                    ! Carbon::createFromFormat('Y-m-d H:i:s', $event->getSortDate())->isPast())
                 ->map(function (Event $event) {
                     $sortDate = $event->getSortDate();
                     $start = $event->start->dateTime ?? $event->start->date;
